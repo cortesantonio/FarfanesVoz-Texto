@@ -1,0 +1,142 @@
+body {
+    padding: 0;
+    margin: 0;
+    font-family: 'Franklin Gothic Medium', 'Arial Narrow', Arial, sans-serif;
+    box-sizing: content-box;
+}
+
+.nav {
+    display: flex;
+    flex-direction: row;
+    justify-content: start;
+    align-items: center;
+    padding: 20px;
+    height: 50px;
+    gap: 5px;
+
+}
+
+.titulo {
+    color: gray;
+}
+
+span {
+    font-weight: 600;
+    color: black;
+    font-size: 1.2rem;
+}
+
+/* Modal */
+#modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 5px;
+    width: 80%;
+    max-width: 500px;
+    text-align: center;
+}
+
+.closeBtn {
+    background-color: #ff4d4d;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    margin-left: -30px;
+    margin-bottom: 10px;
+    width: 100%;
+    padding: 10px;
+    border-radius: 10px;
+    box-shadow: 2px 2px 5px rgb(214, 214, 214);
+    background-color: rgb(255, 249, 236);
+}
+
+button {
+    padding: 5px 10px;
+    font-size: 14px;
+    margin-left: 10px;
+    cursor: pointer;
+}
+
+.viewDetailsBtn{
+    background-color: #b1b1b1;
+    color: white;
+    border: none;
+}
+.deleteBtn {
+    background-color: #ff6363;
+    color: white;
+    border: none;
+}
+
+.editBtn {
+    background-color: #ffbb3d;
+    color: white;
+    border: none;
+}
+
+.container {
+    padding: 20px;
+
+}
+
+.centerbtn {
+    width: 100vw;
+    position: absolute;
+    bottom: 20px;
+    text-align: center;
+
+}
+
+.textCard {
+    display: inline-block;
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.botones{
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+#editModal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: white;
+    padding: 20px;
+    border-radius: 5px;
+    width: 80%;
+    max-width: 500px;
+    text-align: center;
+}

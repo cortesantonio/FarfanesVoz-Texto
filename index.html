@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farfanes</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css"
+        integrity="sha512-Kc323vGBEqzTmouAECnVceyQqyqdsSiqLQISBL29aUW4U/M7pSPA/gEUZQqv1cwx4OnYxTxve5UMg5GT6L4JJg=="
+        crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+
+<body>
+
+    <div class="nav">
+
+        <img src="img/logo.png" width="50px" height="50px" alt="Farfanes Logo">
+
+        <div class="titulo"> <span>Taller Mecanico Farfanes </span> <br> Toma de ordenes por voz</div>
+
+    </div>
+
+
+    <div class="container">
+        <h3>Registros</h3>
+        <ul id="notesList"></ul>
+
+
+    </div>
+
+
+
+
+    <!-- Modal de Detalles de la Nota -->
+    <div id="modal">
+        <div class="modal-content">
+            <h2>Detalles de la Nota</h2>
+            <p id="modalText"></p>
+            <button onclick="copyToClipboard()">Copiar todo</button>
+            <button class="closeBtn" onclick="closeModal()">Cerrar</button>
+
+        </div>
+    </div>
+    <div id="formContainer"></div>
+
+
+
+    <div class="centerbtn">
+        <img src="img/mic.png" width="" alt="" id="startBtn">
+
+    </div>
+
+
+    <script src="main.js"></script>
+
+
+</body>
+
+</html>
