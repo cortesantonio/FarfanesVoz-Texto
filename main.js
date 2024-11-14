@@ -15,7 +15,10 @@ let currentFieldIndex = 0;
 const fields = ["patente del vehículo", "dueño", "inspección visual", "problema", "diagnóstico/reparación"];
 let newNote = {};
 
-let notes = JSON.parse(localStorage.getItem('notes')) || [];
+let notes = [];
+
+
+
 
 
 
@@ -35,11 +38,46 @@ function formatDate(timestamp) {
 }
 
 
-// Renderiza las notas al iniciar
-renderNotes();
+const openDB = indexedDB.open("BaseDeDatosNotas", 1);
+
+// Paso 2: Configuración inicial de la base de datos (solo se ejecuta si es la primera vez)
+openDB.onupgradeneeded = function (event) {
+    const db = event.target.result;
+    // Crear un almacén de objetos (tabla) llamado "notas" con una clave "id" autoincrementable
+    const objectStore = db.createObjectStore("notas", { keyPath: "id", autoIncrement: false });
+
+    // Crear índices para buscar por distintos campos
+    objectStore.createIndex("patenteVehiculo", "patenteVehiculo", { unique: false });
+    objectStore.createIndex("dueno", "dueno", { unique: false });
+    objectStore.createIndex("inspeccionVisual", "inspeccionVisual", { unique: false });
+    objectStore.createIndex("problema", "problema", { unique: false });
+    objectStore.createIndex("diagnosticoReparacion", "diagnosticoReparacion", { unique: false });
+
+    console.log("Base de datos y almacén de objetos 'notas' creados");
+};
+
+function obtenerNotas() {
+    const db = openDB.result;
+    const transaction = db.transaction("notas", "readonly");
+    const objectStore = transaction.objectStore("notas");
+    const request = objectStore.getAll(); // Obtiene todas las notas
+
+    request.onsuccess = function (event) {
+        notes = event.target.result;
+        renderNotes()
+    };
+    request.onerror = function (event) {
+        console.error("Error al obtener notas:", event.target.error);
+    };
+}
 
 
-
+openDB.onsuccess = function () {
+    const db = openDB.result;
+    console.log("Base de datos abierta con éxito");
+    // Llamamos a las funciones de ejemplo aquí, una vez que la base de datos esté lista
+    obtenerNotas()
+};
 // INICIAR CREACION DE NOTA POR VOZ
 startBtn.addEventListener('click', () => {
     isCreatingNote = true;  // Activamos el estado de creación de nota
@@ -149,38 +187,58 @@ function promptNextField() {
     } else {
         saveNote();
         speak("Nota guardada exitosamente.");
-        resetForm();
+        //resetForm();
     }
 }
 
-// Función para guardar la nota
-function saveNotes() {
-    localStorage.setItem('notes', JSON.stringify(notes));
-    renderNotes();
-}
+
 
 // Función para guardar una nueva nota
 function saveNote() {
-    notes.push({ id: Date.now(), ...newNote });
-    saveNotes();  // Usamos saveNotes para guardar y renderizar
+    const db = openDB.result;
+    const transaction = db.transaction("notas", "readwrite");
+    const objectStore = transaction.objectStore("notas");
+
+    // Crear el objeto nota con los campos especificados
+    const request = objectStore.add({
+        id: Date.now(),
+        "patente del vehículo": newNote["patente del vehículo"],
+        dueño: newNote.dueño,
+        inspecciónVisual: newNote["inspección visual"],
+        problema: newNote.problema,
+        "diagnóstico/reparación": newNote["diagnóstico/reparación"]
+    });
+
+    request.onsuccess = () => console.log("Nota añadida con éxito");
+    request.onerror = (event) => console.error("Error al agregar la nota:", event.target.error);
+
+    renderNotes();
 }
 
-// Función para eliminar una nota
 function deleteNote(id) {
-    // Mostrar una ventana de confirmación antes de eliminar
-    const confirmation = window.confirm("¿Estás seguro de que deseas eliminar esta nota?");
 
-    if (confirmation) {
-        // Si el usuario confirma, eliminar la nota
-        notes = notes.filter(note => note.id !== id);
-        saveNotes();  // Usamos saveNotes para guardar los cambios
-    }
+    const note = notes.find(note => note.id === id);
+    console.log(note)
+    const confirmation = window.confirm(`¿Estás seguro de que deseas eliminar esta nota? \n\nPatente: ${note["patente del vehículo"]} \nDueño ${note['dueño']} \nProblema: ${note['problema']}`);
+    if (!confirmation) return;
+
+    const db = openDB.result;
+    const transaction = db.transaction("notas", "readwrite");
+    const objectStore = transaction.objectStore("notas");
+
+    const request = objectStore.delete(id);
+    request.onsuccess = () => {
+        console.log("Nota eliminada exitosamente");
+        obtenerNotas(); // Actualiza la lista de notas y vuelve a renderizar
+    };
+    request.onerror = (event) => {
+        console.error("Error al eliminar la nota:", event.target.error);
+    };
 }
 
 // Función para editar una nota
 function editNote(id) {
     const note = notes.find(note => note.id === id);
-
     // Crear el formulario para editar los campos
     const editForm = `
     <div class="form-container">
@@ -206,7 +264,7 @@ function editNote(id) {
             <div class="form-group">
                 <label for="inspeccion">Inspección Visual:</label>
                 <div class="input-with-icon">
-                    <input type="text" id="inspeccion" value="${note['inspección visual']}">
+                    <input type="text" id="inspeccion" value="${note['inspecciónVisual']}">
                     <button class="mic-button" type="button" onclick="editInspeccion()" >
                         <span class="material-symbols-outlined">mic</span>
                     </button>
@@ -246,8 +304,14 @@ function editNote(id) {
     formContainer.innerHTML = editForm;
 }
 
+
 // Función para guardar los cambios después de editar una nota
 function saveEdit(id) {
+    const db = openDB.result;
+    const transaction = db.transaction("notas", "readwrite");
+    const objectStore = transaction.objectStore("notas");
+
+
     const note = notes.find(note => note.id === id);
 
     // Obtener los valores editados
@@ -257,7 +321,16 @@ function saveEdit(id) {
     note['problema'] = document.getElementById('problema').value;
     note['diagnóstico/reparación'] = document.getElementById('diagnostico').value;
 
-    saveNotes();  // Usamos saveNotes para guardar y renderizar los cambios
+
+    // Guardar en IndexedDB
+    const request = objectStore.put(note);
+    request.onsuccess = () => {
+        console.log("Nota actualizada exitosamente");
+        obtenerNotas(); // Actualiza la lista de notas y vuelve a renderizar
+    };
+    request.onerror = (event) => {
+        console.error("Error al actualizar la nota:", event.target.error);
+    };
 
     // Limpiar el formulario de edición
     document.getElementById('formContainer').innerHTML = '';
@@ -268,27 +341,35 @@ function cancelEdit() {
     document.getElementById('formContainer').innerHTML = ''; // Limpiar el formulario de edición
 }
 
-// Función para renderizar las notas en la lista
+
+
+
+// Función para renderizar notas, incluyendo un parámetro opcional
 function renderNotes() {
-    notesList.innerHTML = '';
-    notes.forEach(note => {
+
+    notesList.innerHTML = ''; // Limpiar la lista antes de renderizar
+
+
+    for (let i = 0; i < notes.length; i++) {
+
         const listItem = document.createElement('li');
         listItem.innerHTML = `
             <div class="cardHeader">
-                
-            <span class="FechaRender">${formatDate(note['id'])}</span>
-            <span class="textCard">${note['patente del vehículo']}: ${note.problema}</span>
+                <span class="FechaRender">${formatDate(notes[i]['id'])}</span>
+                <span class="textCard">${notes[i]['patente del vehículo']} - ${notes[i]['problema']} </span>
             </div>
-
             <div>
-                <button class="editBtn" onclick="editNote(${note.id})"><i class="fa-solid fa-pen-to-square"></i></button>
-                <button class="deleteBtn" onclick="deleteNote(${note.id})"><i class="fa-solid fa-trash"></i></button>
-                <button class="viewDetailsBtn" onclick="showModal(${note.id})"><i class="fa-solid fa-circle-info"></i></button>
+                <button class="editBtn" onclick="editNote(${notes[i].id})"><i class="fa-solid fa-pen-to-square"></i></button>
+                <button class="deleteBtn" onclick="deleteNote(${notes[i].id})"><i class="fa-solid fa-trash"></i></button>
+                <button class="viewDetailsBtn" onclick="showModal(${notes[i].id})"><i class="fa-solid fa-circle-info"></i></button>
             </div>
         `;
         notesList.appendChild(listItem);
-    });
+    }
+
+
 }
+
 
 function toggleSortByDate(orden) {
     const btn = document.getElementById('btnSort');
@@ -318,7 +399,7 @@ function showModal(noteId) {
         <strong>Dueño:</strong>
         <span>${note["dueño"]}</span>
         <strong>Inspección Visual:</strong>
-        <span>${note["inspección visual"]}</span>
+        <span>${note["inspecciónVisual"]}</span>
         <strong>Problema:</strong>
         <span>${note["problema"]}</span>
         <strong>Diagnóstico/Reparación:</strong>
@@ -337,7 +418,7 @@ function speak(text, callback) {
     const synth = window.speechSynthesis;
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.onend = callback;
-    synth.speak(utterance); si
+    synth.speak(utterance);
 }
 
 // Función para copiar el contenido del modal al portapapeles
