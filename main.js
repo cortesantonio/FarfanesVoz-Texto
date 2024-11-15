@@ -19,9 +19,6 @@ let notes = [];
 
 
 
-
-
-
 let isCreatingNote = false;
 let isSearching = false;
 let isEditingInspeccion = false;
@@ -52,6 +49,7 @@ openDB.onupgradeneeded = function (event) {
     objectStore.createIndex("inspeccionVisual", "inspeccionVisual", { unique: false });
     objectStore.createIndex("problema", "problema", { unique: false });
     objectStore.createIndex("diagnosticoReparacion", "diagnosticoReparacion", { unique: false });
+    objectStore.createIndex("foto", "foto", { unique: false });
 
     console.log("Base de datos y almacén de objetos 'notas' creados");
 };
@@ -70,7 +68,6 @@ function obtenerNotas() {
         console.error("Error al obtener notas:", event.target.error);
     };
 }
-
 
 openDB.onsuccess = function () {
     const db = openDB.result;
@@ -206,7 +203,8 @@ function saveNote() {
         dueño: newNote.dueño,
         inspecciónVisual: newNote["inspección visual"],
         problema: newNote.problema,
-        "diagnóstico/reparación": newNote["diagnóstico/reparación"]
+        "diagnóstico/reparación": newNote["diagnóstico/reparación"],
+        foto: null
     });
 
     request.onsuccess = () => console.log("Nota añadida con éxito");
@@ -341,9 +339,6 @@ function cancelEdit() {
     document.getElementById('formContainer').innerHTML = ''; // Limpiar el formulario de edición
 }
 
-
-
-
 // Función para renderizar notas, incluyendo un parámetro opcional
 function renderNotes() {
 
@@ -404,7 +399,9 @@ function showModal(noteId) {
         <span>${note["problema"]}</span>
         <strong>Diagnóstico/Reparación:</strong>
         <span>${note["diagnóstico/reparación"]}</span>
+        <div id="imgModal"></div>
     `;
+    showImage(note.id);
     document.getElementById('modal').style.display = 'flex';
 }
 

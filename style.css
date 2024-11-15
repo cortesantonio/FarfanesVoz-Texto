@@ -13,7 +13,7 @@ hr {
     padding: 0;
     width: 90%;
     margin: auto;
-    
+
 
 }
 
@@ -41,7 +41,7 @@ span {
 /* Modal */
 #modal {
     position: fixed;
-    z-index: 1000;
+    z-index: 500;
     top: 0;
     left: 0;
     right: 0;
@@ -416,4 +416,38 @@ button {
 
 .ordenBtn i {
     color: #4a5568;
+}
+
+.btnCamera {
+    background-color: #3f82ff !important;
+    color: white !important;
+    border: none !important;
+}
+
+#imgModal {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: start;
+    align-items: center;
+    gap: 5px;
+}
+
+#modalCamara {
+    z-index: 1000;
+
+    display: none;
+    position: fixed;
+    width: 100%;
+    height: 100vh;
+    top: 0;
+    left: 0;
+
+    background-color: rgba(0, 0, 0, 0.555);
+}
+
+.ViewCamara{
+    width: 300px;
+    height: 500px;
 }

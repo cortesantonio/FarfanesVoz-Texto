@@ -31,12 +31,12 @@
     <div class="container">
         <div class="search-container">
             <div class="search-bar">
-                
+
                 <button id="searchMicBtn">
                     <span class="material-symbols-outlined">mic</span>
                 </button>
                 <input type="text" id="searchInput" placeholder="Buscar patente o dueño">
-                
+
                 <button id="searchBtn" onclick="buscarPorTexto()">
                     <i class="fa-solid fa-magnifying-glass" style="color:white ;"></i>
                 </button>
@@ -72,6 +72,8 @@
             <p id="modalText"></p>
             <div class="button-group">
                 <button onclick="copyToClipboard()">Copiar todo</button>
+
+
                 <button class="closeBtn" onclick="closeModal()">Cerrar</button>
             </div>
 
@@ -79,6 +81,12 @@
     </div>
     <div id="formContainer"></div>
 
+
+    <div id="modalCamara">
+        <video id="video" class="ViewCamara" autoplay></video>
+        <canvas id="canvas" width="1280" height="720" style="display:none;"></canvas>
+        <button id="capture">Tomar Foto</button>
+    </div>
 
 
     <div class="centerbtn">
@@ -88,8 +96,10 @@
     </div>
 
 
-    <script src="main.js"></script>
 
+
+    <script src="main.js"></script>
+    <script src="camara.js"></script>
 
 </body>
 
