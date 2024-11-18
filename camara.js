@@ -4,17 +4,29 @@ const canvas = document.getElementById("canvas");
 const captureButton = document.getElementById("capture");
 const modalCamara = document.getElementById("modalCamara");
 
-//este boton abre la camara
+const closeModalCamaraButton = document.getElementById("closeModalCamara");
+const contador = document.getElementById("contador");
 
+let fotosTomadas = 0;
+const maxFotos = 5;  // Limitar a 5 fotos
 
-
+// Este botón abre la cámara
 function AbrirCamara(id) {
     modalCamara.style.display = "block";
 
-    // Acceder a la cámara
-    navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 } } // Solicita alta resolución
-    })
+    const db = openDB.result;
+    const transaction = db.transaction("notas", "readonly");
+    const objectStore = transaction.objectStore("notas");
+    const request = objectStore.get(id);
+
+    request.onsuccess = (event) => {
+        const note = event.target.result;
+        fotosTomadas = note.fotos ? note.fotos.length : 0;
+        actualizarContador();
+
+        navigator.mediaDevices.getUserMedia({
+            video: { width: { ideal: 1280 }, height: { ideal: 720 } }
+        })
         .then(stream => {
             video.srcObject = stream;
         })
@@ -22,80 +34,152 @@ function AbrirCamara(id) {
             console.error("Error al acceder a la cámara:", error);
         });
 
-    // Capturar la foto
-    captureButton.addEventListener("click", () => {
-        const context = canvas.getContext("2d");
-        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        captureButton.addEventListener("click", () => {
+            if (fotosTomadas < maxFotos) {
+                const context = canvas.getContext("2d");
+                context.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-        // Convertir la imagen a un Blob (formato de imagen JPEG)
-        canvas.toBlob(blob => {
-            saveImage(blob, id)
-        }, "image/jpeg");
+                canvas.toBlob(blob => {
+                    saveImage(blob, id);
+                }, "image/jpeg");
+
+                fotosTomadas++;
+                actualizarContador();
+
+                if (fotosTomadas >= maxFotos) {
+                    captureButton.disabled = true;
+                    captureButton.textContent = "Límite de fotos alcanzado";
+                    alert("Has alcanzado el límite de 5 fotos.");
+                    cerrarModalCamara();
+                } else {
+                    captureButton.innerHTML = '<i class="fa-solid fa-camera"></i>';
+                }
+            }
+        });
+    };
+
+    request.onerror = (event) => {
+        console.error("Error al obtener la nota:", event.target.error);
+    };
+
+    closeModalCamaraButton.addEventListener("click", () => {
+        cerrarModalCamara();
     });
-
 }
 
+// Función para cerrar el modal y detener el video
+function cerrarModalCamara() {
+    modalCamara.style.display = "none";
+    // Detener el stream de la cámara al cerrar el modal
+    const stream = video.srcObject;
+    if (stream) {
+        const tracks = stream.getTracks();
+        tracks.forEach(track => track.stop());
+    }
+}
 
+// Guardar la imagen en IndexedDB
 function saveImage(blob, id) {
-
     const db = openDB.result;
     const transaction = db.transaction("notas", "readwrite");
     const objectStore = transaction.objectStore("notas");
 
+    const request = objectStore.get(id);
+    request.onsuccess = (event) => {
+        const note = event.target.result;
 
-    const note = notes.find(note => note.id === id);
+        if (!note.fotos) {
+            note.fotos = [];
+        }
 
-    // Obtener los valores editados
+        note.fotos.push(blob);
 
-    note['foto'] = blob
-    
-    // Guardar en IndexedDB
-    const request = objectStore.put(note);
-    request.onsuccess = () => {
-        console.log("Nota actualizada exitosamente");
-        obtenerNotas(); // Actualiza la lista de notas y vuelve a renderizar
+        const updateRequest = objectStore.put(note);
+        updateRequest.onsuccess = () => {
+            console.log("Nota actualizada exitosamente con nueva foto");
+            showImage(id); // Recarga dinámicamente las fotos en el modal
+        };
+        updateRequest.onerror = (event) => {
+            console.error("Error al actualizar la nota con foto:", event.target.error);
+        };
     };
     request.onerror = (event) => {
-        console.error("Error al actualizar la nota:", event.target.error);
+        console.error("Error al obtener la nota:", event.target.error);
     };
-
-    // Limpiar el formulario de edición
-    document.getElementById('formContainer').innerHTML = '';
-
-   
 }
 
-
+// Mostrar la foto almacenada en el modal
 function showImage(id) {
     const db = openDB.result;
     const transaction = db.transaction("notas", "readonly");
     const objectStore = transaction.objectStore("notas");
     const divIMG = document.getElementById("imgModal");
     const request = objectStore.get(id);
+
     request.onsuccess = (event) => {
         const note = event.target.result;
-        const btnTomarFoto = document.getElementById("btnCamera");
 
-        if (note.foto != null) {
+        divIMG.innerHTML = ''; // Limpiar contenido previo
 
-            const imageURL = URL.createObjectURL(note.foto); // Crear URL desde Blob
-            const imageElement = document.createElement("a");
-            imageElement.href = imageURL;
-            imageElement.target = "_blank";
-             // Abrir en una nueva pestaña
-            imageElement.innerHTML = `<img src="${imageURL}" alt="Foto tomada" style="max-width: 100%; max-height: 100%;">`;
-            divIMG.appendChild(imageElement);
+        if (note.fotos && note.fotos.length > 0) {
+            // Crear un contenedor para las imágenes
+            const imageContainer = document.createElement("div");
+            imageContainer.className = "image-grid";
 
+            // Mostrar las fotos almacenadas
+            note.fotos.forEach((foto, index) => {
+                const imageURL = URL.createObjectURL(foto);
+                const imageElement = document.createElement("div");
+                imageElement.className = "image-item";
+                imageElement.innerHTML = `
+                    <a href="${imageURL}" target="_blank">
+                        <img src="${imageURL}" alt="Foto ${index + 1}">
+                    </a>
+                `;
+                imageContainer.appendChild(imageElement);
+            });
+
+            divIMG.appendChild(imageContainer);
+
+            // Mostrar mensaje de fotos restantes solo si hay fotos existentes
+            const fotosFaltantes = maxFotos - note.fotos.length;
+            if (fotosFaltantes > 0) {
+                const mensajeFotos = document.createElement("p");
+                mensajeFotos.textContent = `Te ${fotosFaltantes === 1 ? 'queda' : 'quedan'} ${fotosFaltantes} ${fotosFaltantes === 1 ? 'foto' : 'fotos'} por tomar.`;
+                divIMG.appendChild(mensajeFotos);
+            }
         } else {
-            divIMG.innerHTML = `
-                    <Button id="btnCamera" onclick="AbrirCamara(${id})">Tomar Foto</Button>
-                    <p>Este registro no tiene fotos. </p>
-            
-            `;
+            // Mensaje cuando no hay fotos
+            const noFotosMessage = document.createElement("p");
+            noFotosMessage.textContent = "Este registro no tiene fotos.";
+            divIMG.appendChild(noFotosMessage);
+        }
 
+        // Mostrar el botón para tomar foto si faltan fotos
+        if (!note.fotos || note.fotos.length < 5) {
+            const tomarFotoBtn = document.createElement("button");
+            tomarFotoBtn.id = "btnCamera";
+            tomarFotoBtn.textContent = "Tomar Foto";
+            tomarFotoBtn.onclick = () => AbrirCamara(id);
+            divIMG.appendChild(tomarFotoBtn);
         }
     };
+
     request.onerror = (event) => {
         console.error("Error al recuperar la foto:", event.target.error);
     };
 }
+
+// Actualizar el contador de fotos
+function actualizarContador() {
+    contador.textContent = `Fotos tomadas: ${fotosTomadas} de ${maxFotos}`;
+
+    if (fotosTomadas >= maxFotos) {
+        captureButton.disabled = true;
+        captureButton.textContent = "Límite de fotos alcanzado";
+    } else {
+        captureButton.disabled = false;
+        captureButton.innerHTML = '<i class="fa-solid fa-camera"></i>';
+    }
+}
+

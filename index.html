@@ -14,6 +14,7 @@
     <link rel="stylesheet"
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=swap_vert" />
 
+
 </head>
 
 <body>
@@ -79,15 +80,36 @@
 
         </div>
     </div>
+
+
     <div id="formContainer"></div>
 
 
     <div id="modalCamara">
+        <div class="camera-controls">
+            <button id="closeModalCamara"><i class="fa-solid fa-arrow-left"></i> Volver Atrás</button>
+            <p id="contador">Fotos tomadas: 0 de 5</p>
+        </div>
         <video id="video" class="ViewCamara" autoplay></video>
-        <canvas id="canvas" width="1280" height="720" style="display:none;"></canvas>
-        <button id="capture">Tomar Foto</button>
-    </div>
+        <canvas id="canvas" width="1280" height="720"></canvas>
+        <button id="capture"><i class="fa-solid fa-camera"></i></button>
+    </div>   
 
+
+    
+    <div id="modalfirma">
+        <div class="signature-modal-content">
+          <h2 class="signature-title">Firmar</h2>
+          
+          <canvas id="signatureCanvas" width="400" height="200"></canvas>
+          
+          <div class="signature-footer">
+            <button id="clearSignature" class="signature-button">Limpiar</button>
+            <button id="closeModalFirma" class="signature-button">Cancelar</button>
+            <button id="saveFirma" class="signature-button">Firmar documento</button>
+          </div>
+        </div>
+    </div>
 
     <div class="centerbtn">
         <span class="material-symbols-outlined" id="startBtn">mic</span>

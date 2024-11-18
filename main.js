@@ -385,7 +385,7 @@ function toggleSortByDate(orden) {
 
 // Función para mostrar el modal con los detalles de la nota
 function showModal(noteId) {
-    const note = notes.find(n => n.id === noteId); // Buscar la nota por ID
+    const note = notes.find(n => n.id === noteId);
     modalText.innerHTML = `
         <strong>Fecha:</strong>
         <span>${formatDate(note["id"])}</span>
@@ -397,13 +397,143 @@ function showModal(noteId) {
         <span>${note["inspecciónVisual"]}</span>
         <strong>Problema:</strong>
         <span>${note["problema"]}</span>
-        <strong>Diagnóstico/Reparación:</strong>
+        <strong>Diagnóstico Inicial</strong>
         <span>${note["diagnóstico/reparación"]}</span>
-        <div id="imgModal"></div>
+        <strong>Fotos:</strong>
+        <div id="imgModal" class="image-section"></div>
+        <strong>Firma:</strong>
+        <div id="firmaContainer" class="signature-section">
+            ${note.signature 
+                ? `<img src="${note.signature}" alt="Firma" class="signature-image">` 
+                : '<button id="openSignatureModal" class="signature-button">Añadir Firma</button>'}
+        </div>
     `;
     showImage(note.id);
     document.getElementById('modal').style.display = 'flex';
+
+    if (!note.signature) {
+        document.getElementById('openSignatureModal').addEventListener('click', () => {
+            showSignatureModal(note);
+        });
+    }
 }
+
+function showSignatureModal(note) {
+    const modalFirma = document.getElementById('modalfirma');
+    modalFirma.classList.add('active');
+
+    initSignaturePad(note);
+
+    document.getElementById('closeModalFirma').addEventListener('click', () => {
+        modalFirma.classList.remove('active');
+    });
+}
+
+// Función para realizar la firma
+function initSignaturePad(note) {
+    const canvas = document.getElementById('signatureCanvas');
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false;
+
+    // Ajustar el tamaño del canvas al tamaño de su contenedor
+    function resizeCanvas() {
+        const rect = canvas.getBoundingClientRect();
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseout', stopDrawing);
+
+    // Soporte para dispositivos táctiles
+    canvas.addEventListener('touchstart', startDrawing);
+    canvas.addEventListener('touchmove', draw);
+    canvas.addEventListener('touchend', stopDrawing);
+
+    document.getElementById('clearSignature').addEventListener('click', clearSignature);
+    document.getElementById('saveFirma').addEventListener('click', () => saveSignature(note));
+
+    function startDrawing(e) {
+        isDrawing = true;
+        draw(e);
+    }
+
+    function draw(e) {
+        if (!isDrawing) return;
+        e.preventDefault(); // Prevenir el scroll en dispositivos táctiles
+
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        let x, y;
+        if (e.type.includes('mouse')) {
+            x = (e.clientX - rect.left) * scaleX;
+            y = (e.clientY - rect.top) * scaleY;
+        } else if (e.type.includes('touch')) {
+            x = (e.touches[0].clientX - rect.left) * scaleX;
+            y = (e.touches[0].clientY - rect.top) * scaleY;
+        }
+
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = 'black';
+
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+    }
+
+    function stopDrawing() {
+        isDrawing = false;
+        ctx.beginPath();
+    }
+
+    function clearSignature() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function saveSignature(note) {
+        const canvas = document.getElementById('signatureCanvas');
+        const signatureData = canvas.toDataURL('image/png');
+        note.signature = signatureData;
+    
+        const db = openDB.result;
+        const transaction = db.transaction("notas", "readwrite");
+        const objectStore = transaction.objectStore("notas");
+    
+        const updateRequest = objectStore.put(note);
+        updateRequest.onsuccess = () => {
+            console.log("Firma guardada exitosamente");
+            showModal(note.id); // Recarga dinámicamente el modal principal con la firma
+            document.getElementById('modalfirma').classList.remove('active');
+        };
+        updateRequest.onerror = (event) => {
+            console.error("Error al actualizar la nota con firma:", event.target.error);
+        };
+    }
+}
+
+function updateNoteInDB(note) {
+    const db = openDB.result;
+    const transaction = db.transaction("notas", "readwrite");
+    const objectStore = transaction.objectStore("notas");
+    const request = objectStore.put(note);
+    request.onsuccess = () => {
+        console.log("Nota actualizada con firma");
+        obtenerNotas(); // Actualiza la lista de notas y vuelve a renderizar
+    };
+    request.onerror = (event) => {
+        console.error("Error al actualizar la nota con firma:", event.target.error);
+    };
+}
+
+
 
 // Función para cerrar el modal
 function closeModal() {
