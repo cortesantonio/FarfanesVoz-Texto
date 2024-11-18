@@ -419,7 +419,7 @@ function showModal(noteId) {
     document.getElementById('modal').style.display = 'flex';
     buttonGroup.innerHTML = `
 
-                <button onclick="printModalContent(${note.id})">Copiar todo</button>
+                <button onclick="printModalContent(${note.id})">Compartir/Imprimir</button>
                 <button class="closeBtn" onclick="closeModal()">Cerrar</button>
 
         `;
