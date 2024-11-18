@@ -49,7 +49,8 @@ openDB.onupgradeneeded = function (event) {
     objectStore.createIndex("inspeccionVisual", "inspeccionVisual", { unique: false });
     objectStore.createIndex("problema", "problema", { unique: false });
     objectStore.createIndex("diagnosticoReparacion", "diagnosticoReparacion", { unique: false });
-    objectStore.createIndex("foto", "foto", { unique: false });
+    objectStore.createIndex("fotos", "fotos", { unique: false });
+    objectStore.createIndex("signature", "signature", { unique: false });
 
     console.log("Base de datos y almacén de objetos 'notas' creados");
 };
@@ -62,6 +63,7 @@ function obtenerNotas() {
 
     request.onsuccess = function (event) {
         notes = event.target.result;
+        notes.sort((a, b) => b.id - a.id);
         renderNotes()
     };
     request.onerror = function (event) {
@@ -184,7 +186,6 @@ function promptNextField() {
     } else {
         saveNote();
         speak("Nota guardada exitosamente.");
-        //resetForm();
     }
 }
 
@@ -204,13 +205,15 @@ function saveNote() {
         inspecciónVisual: newNote["inspección visual"],
         problema: newNote.problema,
         "diagnóstico/reparación": newNote["diagnóstico/reparación"],
-        foto: null
+        fotos: null,
+        signature: null
     });
 
     request.onsuccess = () => console.log("Nota añadida con éxito");
     request.onerror = (event) => console.error("Error al agregar la nota:", event.target.error);
 
-    renderNotes();
+    obtenerNotas();
+
 }
 
 function deleteNote(id) {
@@ -344,7 +347,6 @@ function renderNotes() {
 
     notesList.innerHTML = ''; // Limpiar la lista antes de renderizar
 
-
     for (let i = 0; i < notes.length; i++) {
 
         const listItem = document.createElement('li');
@@ -354,7 +356,9 @@ function renderNotes() {
                 <span class="textCard">${notes[i]['patente del vehículo']} - ${notes[i]['problema']} </span>
             </div>
             <div>
-                <button class="editBtn" onclick="editNote(${notes[i].id})"><i class="fa-solid fa-pen-to-square"></i></button>
+            ${notes[i].signature == null
+                ? `                <button class="editBtn" onclick="editNote(${notes[i].id})"><i class="fa-solid fa-pen-to-square"></i></button>` : '<span style="color: green; font-size:1.1rem" > Firmado </span>'
+            }
                 <button class="deleteBtn" onclick="deleteNote(${notes[i].id})"><i class="fa-solid fa-trash"></i></button>
                 <button class="viewDetailsBtn" onclick="showModal(${notes[i].id})"><i class="fa-solid fa-circle-info"></i></button>
             </div>
@@ -369,12 +373,14 @@ function renderNotes() {
 function toggleSortByDate(orden) {
     const btn = document.getElementById('btnSort');
     if (orden == 'asc') {
-        notes.sort((a, b) => new Date(a.id) - new Date(b.id));
+        notes.sort((a, b) => new Date(b.id) - new Date(a.id));
+
         btn.onclick = () => toggleSortByDate('desc');
         renderNotes();
 
     } else if (orden == 'desc') {
-        notes.sort((a, b) => new Date(b.id) - new Date(a.id));
+        notes.sort((a, b) => new Date(a.id) - new Date(b.id));
+
         btn.onclick = () => toggleSortByDate('asc');
 
         renderNotes();
@@ -385,6 +391,7 @@ function toggleSortByDate(orden) {
 
 // Función para mostrar el modal con los detalles de la nota
 function showModal(noteId) {
+    const buttonGroup = document.getElementById('button-group');
     const note = notes.find(n => n.id === noteId);
     modalText.innerHTML = `
         <strong>Fecha:</strong>
@@ -403,17 +410,22 @@ function showModal(noteId) {
         <div id="imgModal" class="image-section"></div>
         <strong>Firma:</strong>
         <div id="firmaContainer" class="signature-section">
-            ${note.signature 
-                ? `<img src="${note.signature}" alt="Firma" class="signature-image">` 
-                : '<button id="openSignatureModal" class="signature-button">Añadir Firma</button>'}
+            ${note.signature
+            ? `<img src="${note.signature}" alt="Firma" class="signature-image">`
+            : '<button id="openSignatureModal" class="signature-button">Añadir Firma</button>'}
         </div>
     `;
     showImage(note.id);
     document.getElementById('modal').style.display = 'flex';
+    buttonGroup.innerHTML = `
 
+                <button onclick="printModalContent(${note.id})">Copiar todo</button>
+                <button class="closeBtn" onclick="closeModal()">Cerrar</button>
+
+        `;
     if (!note.signature) {
         document.getElementById('openSignatureModal').addEventListener('click', () => {
-            showSignatureModal(note);
+            showSignatureModal(note.id);
         });
     }
 }
@@ -498,23 +510,41 @@ function initSignaturePad(note) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
 
-    function saveSignature(note) {
+    function saveSignature(noteId) {
         const canvas = document.getElementById('signatureCanvas');
         const signatureData = canvas.toDataURL('image/png');
-        note.signature = signatureData;
-    
+
         const db = openDB.result;
         const transaction = db.transaction("notas", "readwrite");
         const objectStore = transaction.objectStore("notas");
-    
-        const updateRequest = objectStore.put(note);
-        updateRequest.onsuccess = () => {
-            console.log("Firma guardada exitosamente");
-            showModal(note.id); // Recarga dinámicamente el modal principal con la firma
-            document.getElementById('modalfirma').classList.remove('active');
+
+        // Obtener el objeto completo primero
+        const getRequest = objectStore.get(noteId);
+
+        getRequest.onsuccess = (event) => {
+            const note = event.target.result; // Obtenemos la nota actual
+            if (note) {
+                note.signature = signatureData; // Editamos solo el campo 'signature'
+
+                const updateRequest = objectStore.put(note); // Actualizamos la nota
+                updateRequest.onsuccess = () => {
+                    console.log("Firma guardada exitosamente");
+                    showModal(note.id); // Recarga dinámicamente el modal principal con la firma
+                    document.getElementById('modalfirma').classList.remove('active');
+                    document.getElementById('modal').style.display = 'none';
+                    obtenerNotas();
+
+                };
+                updateRequest.onerror = (event) => {
+                    console.error("Error al actualizar la nota con firma:", event.target.error);
+                };
+            } else {
+                console.error("No se encontró la nota con el ID especificado.");
+            }
         };
-        updateRequest.onerror = (event) => {
-            console.error("Error al actualizar la nota con firma:", event.target.error);
+
+        getRequest.onerror = (event) => {
+            console.error("Error al obtener la nota para actualizar la firma:", event.target.error);
         };
     }
 }
@@ -559,6 +589,98 @@ function copyToClipboard() {
             alert('Error al copiar: ' + err);
         });
 }
+
+
+function printModalContent(id) {
+    const db = openDB.result;
+    const transaction = db.transaction("notas", "readonly");
+    const objectStore = transaction.objectStore("notas");
+    const request = objectStore.get(id);
+
+    request.onsuccess = (event) => {
+        const note = event.target.result;
+
+        // Crear contenido para impresión
+        let contentToPrint = `
+            <div style="font-family: Arial, sans-serif; padding: 20px; line-height: 1.5;">
+                <h2 style="text-align: center;">Detalles de la Nota</h2>
+                <p><strong>Patente del vehículo:</strong> ${note['patente del vehículo']}</p>
+                <p><strong>Dueño:</strong> ${note['dueño']}</p>
+                <p><strong>Inspección Visual:</strong> ${note['inspecciónVisual']}</p>
+                <p><strong>Problema:</strong> ${note['problema']}</p>
+                <p><strong>Diagnóstico/Reparación:</strong> ${note['diagnóstico/reparación']}</p>
+                <h3>Imágenes:</h3>
+                <div style="display: flex; flex-wrap: wrap; gap: 5px;" id="imagenesImpresion">
+                
+                
+                
+        `;
+
+        // Verificar si hay fotos
+        if (note.fotos && note.fotos.length > 0) {
+            note.fotos.forEach((foto, index) => {
+                const imageURL = URL.createObjectURL(foto); // Convertir blob a URL
+                contentToPrint += `
+                    <div>
+                        <img src="${imageURL}" alt="Foto ${index + 1}" style="max-width: 200px; max-height: 150px; border: 1px solid #ccc; margin: 5px;">
+                    </div>
+                `;
+            });
+        } else {
+            contentToPrint += '<p>No hay imágenes disponibles.</p>';
+        }
+        contentToPrint += `</div></div>`;
+
+
+        if (note.signature != null) {
+            contentToPrint += `
+
+            <div style="width:100%; ">
+                <p><strong>Firma Cliente:</strong></p>
+                <img src="${note.signature}" style="max-width: 200px; max-height: 150px; border-bottom: 1px solid #ccc; margin: 5px;" alt="Firma" class="signature-image">
+            </div>
+            `;
+        }
+
+
+
+
+
+
+
+
+
+
+        // Abrir una nueva ventana para impresión
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <html>
+                <head>
+                    <title>Imprimir Nota</title>
+                    <style>
+                        body {
+                            margin: 0;
+                            padding: 0;
+                        }
+                    </style>
+                </head>
+                <body>${contentToPrint}</body>
+            </html>
+        `);
+
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+        }, 500)
+    };
+
+    request.onerror = (event) => {
+        console.error("Error al obtener la nota para imprimir:", event.target.error);
+    };
+}
+
+
+
 
 
 function buscarPorTexto() {

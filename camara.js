@@ -143,11 +143,16 @@ function showImage(id) {
 
             // Mostrar mensaje de fotos restantes solo si hay fotos existentes
             const fotosFaltantes = maxFotos - note.fotos.length;
-            if (fotosFaltantes > 0) {
+            if(note.signature == null){
+              if (fotosFaltantes > 0) {
                 const mensajeFotos = document.createElement("p");
                 mensajeFotos.textContent = `Te ${fotosFaltantes === 1 ? 'queda' : 'quedan'} ${fotosFaltantes} ${fotosFaltantes === 1 ? 'foto' : 'fotos'} por tomar.`;
                 divIMG.appendChild(mensajeFotos);
             }
+            
+            }
+
+          
         } else {
             // Mensaje cuando no hay fotos
             const noFotosMessage = document.createElement("p");
@@ -156,13 +161,17 @@ function showImage(id) {
         }
 
         // Mostrar el botón para tomar foto si faltan fotos
-        if (!note.fotos || note.fotos.length < 5) {
-            const tomarFotoBtn = document.createElement("button");
-            tomarFotoBtn.id = "btnCamera";
-            tomarFotoBtn.textContent = "Tomar Foto";
-            tomarFotoBtn.onclick = () => AbrirCamara(id);
-            divIMG.appendChild(tomarFotoBtn);
+        if(note.signature == null){
+            if (!note.fotos || note.fotos.length < 5 ) {
+                const tomarFotoBtn = document.createElement("button");
+                tomarFotoBtn.id = "btnCamera";
+                tomarFotoBtn.textContent = "Tomar Foto";
+                tomarFotoBtn.onclick = () => AbrirCamara(id);
+                divIMG.appendChild(tomarFotoBtn);
+            }
         }
+
+       
     };
 
     request.onerror = (event) => {
